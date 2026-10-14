@@ -42,4 +42,4 @@ Spending takes two runs, because the signature is made outside the wallet. The f
 with `--print-sighash`, prints the hash. Sign it with `shrincs-signer sign`, turn the
 output into your witness values with your `convert.lua`, put them in the params, and run
 the second. The full walkthrough is in tx-manifest-wallet's
-[`examples/pq_shrincs`](https://github.com/stringhandler/txmanifest-wallet/tree/main/examples/pq_shrincs).
+[`examples/pq_shrincs`](https://github.com/stringhandler/txmanifest-wallet/tree/pq-shrincs/examples/pq_shrincs).

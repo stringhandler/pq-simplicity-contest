@@ -1,0 +1,17 @@
+# Keeps the workflows' actions current. Each is pinned to a commit, and Dependabot moves
+# the pin and its version comment together.
+#
+# Cargo is left out on purpose: a new crate version can change how entries compile and so
+# their scores. Bump runner dependencies by hand, where the pull request check shows any
+# change in results. Security fixes still come through Dependabot's security updates.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/build
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,50 @@
+# Builds the SHRINCS signer and the runner, for the workflows in this repository. Run it
+# from the repository's root, after checking it out.
+#
+# The signer comes from tx-manifest-wallet at the same commit as the runner's
+# tx-manifest-lib: the rev in runner/Cargo.toml, so there's one place to change it. After
+# this, runner/target/release/runner finds the signer through SHRINCS_SIGNER.
+name: Build the signer and the runner
+description: Build shrincs-signer and the contest runner at the pinned tx-manifest-wallet commit.
+
+runs:
+  using: composite
+  steps:
+    - id: rev
+      shell: bash
+      run: |
+        rev=$(sed -n 's/^tx-manifest-lib = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' runner/Cargo.toml)
+        if [ -z "$rev" ]; then
+          echo "::error file=runner/Cargo.toml::no tx-manifest-lib rev"
+          exit 1
+        fi
+        echo "rev=$rev" >> "$GITHUB_OUTPUT"
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: stringhandler/txmanifest-wallet
+        ref: ${{ steps.rev.outputs.rev }}
+        path: .txmanifest-wallet
+        persist-credentials: false
+
+    - shell: bash
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q --no-install-recommends libssl-dev
+        rustup toolchain install stable --profile minimal --no-self-update
+        rustup default stable
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      with:
+        workspaces: runner
+        # One cache for every workflow, written only from main, so a pull request can't
+        # change what later runs on main build from.
+        shared-key: runner
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+
+    - name: Build the signer
+      shell: bash
+      run: |
+        make -C .txmanifest-wallet/contrib/shrincs-signer
+        echo "SHRINCS_SIGNER=$PWD/.txmanifest-wallet/contrib/shrincs-signer/bin/shrincs-signer" >> "$GITHUB_ENV"
+    - name: Build the runner
+      shell: bash
+      run: cargo build --release --locked --manifest-path runner/Cargo.toml

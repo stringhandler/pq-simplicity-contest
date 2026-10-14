@@ -1,0 +1,85 @@
+# Tests the entries a pull request adds or changes, and fails if any of them doesn't pass.
+# The run's summary lists each entry's score or failures.
+#
+# This runs the pull request's own code, entrants' included, so it has read access and
+# nothing else: no secrets, no write token. Keep it on `pull_request`, never
+# `pull_request_target`.
+name: Test entries
+
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: entries-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    # A change to the runner tests every entry, like the leaderboard's build.
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its parents: enough to see what the pull request changes.
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: ./.github/actions/build
+
+      - name: Test new and changed entries
+        run: |
+          # HEAD is the pull request merged into its base, and HEAD^1 is the base. A change
+          # to the runner or the keys can change any result, so it tests every entry.
+          if git diff --quiet HEAD^1 HEAD -- runner keys; then
+            changed=$(git diff --name-only HEAD^1 HEAD -- entries | cut -d/ -f1-3 | sort -u)
+          else
+            changed=$(find entries -mindepth 2 -maxdepth 2 -type d | sort)
+          fi
+
+          summary() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          details="$RUNNER_TEMP/details.md"
+          : > "$details"
+          summary "| entry | result |"
+          summary "|---|---|"
+          tested=0
+          failed=0
+          while IFS= read -r dir; do
+            # Removed entries, and files beside the entry folders, have nothing to test.
+            [ -n "$dir" ] && [ -f "$dir/entry.json" ] || continue
+            tested=$((tested + 1))
+            category=$(basename "$(dirname "$dir")")
+            slug=$(basename "$dir")
+            if ! runner/target/release/runner test --entry "$dir" --out results; then
+              summary "| \`$dir\` | could not be tested: see the log |"
+              failed=1
+              continue
+            fi
+            result="results/$category/$slug.json"
+            if [ "$(jq -r .passed "$result")" = true ]; then
+              summary "| \`$dir\` | passes: score $(jq -r .score_wu "$result") WU |"
+            else
+              summary "| \`$dir\` | **fails**: $(jq -r '.failures | length' "$result") problems |"
+              {
+                echo "<details><summary>$dir: the first problems</summary>"
+                echo
+                echo '```'
+                # The first few: one problem usually repeats for every key and leaf. Actions
+                # runs bash with pipefail, so head closing early mustn't fail the step.
+                jq -r '.failures[:10][]' "$result" | head -c 20000 || true
+                echo '```'
+                echo "</details>"
+              } >> "$details"
+              failed=1
+            fi
+          done <<< "$changed"
+
+          if [ "$tested" -eq 0 ]; then
+            summary "No entries changed."
+          fi
+          # Each failing entry's problems, under the table.
+          cat "$details" >> "$GITHUB_STEP_SUMMARY"
+          exit "$failed"

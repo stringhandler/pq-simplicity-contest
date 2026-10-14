@@ -1,0 +1,58 @@
+# Rebuilds the leaderboard on every push to main and publishes it to GitHub Pages:
+# test every entry, then build the site from the results.
+#
+# It doesn't spend on signet: that needs the operator's wallet, so it stays in check.sh.
+# The signet links come from the committed onchain.json.
+name: Leaderboard
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Each job asks for what it needs. The build runs entrants' code, so it gets only read
+# access; only the deploy job, which runs none, can publish.
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    # Every entry is tested from scratch, a few minutes each, so this grows with the number
+    # of entries. It's here to stop a run that hangs.
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The runner dates each entry from the commit that added it.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/build
+
+      - name: Test the entries
+        run: runner/target/release/runner test --out results
+      - name: Build the leaderboard
+        run: runner/target/release/runner site --results results --out public
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

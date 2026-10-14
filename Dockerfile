@@ -2,8 +2,9 @@
 #
 # The contest runner and the SHRINCS signer, in one image.
 #
-# tx-manifest-wallet comes in as a named build context, so the runner builds against a
-# local checkout of it rather than a pinned revision:
+# The runner fetches tx-manifest-lib at the rev pinned in runner/Cargo.toml. The signer is
+# built from tx-manifest-wallet, which comes in as a named build context: check out the same
+# commit there.
 #
 #   docker build --build-context txmanifest=../txmanifest-wallet -t pq-contest-runner .
 #
@@ -17,17 +18,13 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends g++ make git libssl-dev pkg-config \
  && rm -rf /var/lib/apt/lists/*
 
-# Only the sources the build needs: no target/, and none of a local signer build.
-COPY --from=txmanifest Cargo.toml Cargo.lock /txmanifest-wallet/
-COPY --from=txmanifest txmanifest_lib /txmanifest-wallet/txmanifest_lib
-COPY --from=txmanifest txmanifest_wallet /txmanifest-wallet/txmanifest_wallet
+# Only the signer's sources: none of a local signer build.
 COPY --from=txmanifest contrib/shrincs-signer/Makefile contrib/shrincs-signer/shrincs-signer.cpp \
      /txmanifest-wallet/contrib/shrincs-signer/
 
 # The signer fetches shrincs-cpp at its pinned commit.
 RUN make -C /txmanifest-wallet/contrib/shrincs-signer
 
-# runner/Cargo.toml finds the wallet at ../../txmanifest-wallet, which is /txmanifest-wallet.
 COPY runner /contest/runner
 RUN cargo build --release --locked --manifest-path /contest/runner/Cargo.toml
 

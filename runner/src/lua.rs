@@ -5,12 +5,18 @@
 //! `collectgarbage`, `print`), are removed. There is a memory limit and an instruction
 //! budget. A fresh state per call also means a converter can't carry anything from one
 //! signature to the next.
+//!
+//! The instruction budget only counts Lua instructions: a C function runs to the end
+//! before the hook sees it. So the string pattern functions, which can backtrack for hours
+//! on one call, are removed too. The script must be source text: Lua doesn't check
+//! bytecode, and bad bytecode can corrupt memory.
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use mlua::chunk::ChunkMode;
 use mlua::{Function, HookTriggers, Lua, LuaOptions, StdLib, Table, Value, VmState};
 
 use crate::signer::RawSig;
@@ -57,9 +63,19 @@ pub fn convert(script: &str, sig: &RawSig) -> Result<BTreeMap<String, String>> {
             .set(name, Value::Nil)
             .map_err(|e| anyhow!("cannot sandbox Lua: {e}"))?;
     }
+    // Strings' methods (`s:find(...)`) are this same table, so this covers them too.
+    let string: Table = globals
+        .get("string")
+        .map_err(|e| anyhow!("cannot sandbox Lua: {e}"))?;
+    for name in ["find", "match", "gmatch", "gsub"] {
+        string
+            .set(name, Value::Nil)
+            .map_err(|e| anyhow!("cannot sandbox Lua: {e}"))?;
+    }
 
     lua.load(script)
         .set_name("convert.lua")
+        .set_mode(ChunkMode::Text)
         .exec()
         .map_err(|e| anyhow!("convert.lua: {e}"))?;
     let convert: Function = globals
@@ -101,4 +117,61 @@ pub fn convert(script: &str, sig: &RawSig) -> Result<BTreeMap<String, String>> {
         witnesses.insert(name, value);
     }
     Ok(witnesses)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sig() -> RawSig {
+        RawSig {
+            q: 1,
+            msg: "00".repeat(32),
+            pk: "11".repeat(32),
+            pk_seed: "11".repeat(16),
+            pk_root: "11".repeat(16),
+            raw: String::new(),
+            sl_root: "22".repeat(16),
+            r: "33".repeat(32),
+            counter: "44".repeat(4),
+            chains: vec!["55".repeat(16); 64],
+            path: vec!["66".repeat(16)],
+        }
+    }
+
+    #[test]
+    fn converts() {
+        let script = r#"function convert(sig) return { ROOT = "0x" .. sig.sl_root } end"#;
+        let out = convert(script, &sig()).unwrap();
+        assert_eq!(out["ROOT"], format!("0x{}", "22".repeat(16)));
+    }
+
+    #[test]
+    fn has_no_pattern_functions() {
+        for call in [
+            r#"string.find("ab", "b")"#,
+            r#"("ab"):find("b")"#,
+            r#"("ab"):match("b")"#,
+            r#"("ab"):gsub("b", "c")"#,
+            r#"("ab"):gmatch("b")"#,
+        ] {
+            let script = format!("function convert(sig) {call} return {{}} end");
+            assert!(convert(&script, &sig()).is_err(), "{call} should fail");
+        }
+    }
+
+    #[test]
+    fn refuses_bytecode() {
+        let lua = Lua::new();
+        let bytecode = lua
+            .load("function convert(sig) return {} end")
+            .into_function()
+            .unwrap()
+            .dump(true);
+        // Lua's header isn't valid UTF-8, so only a lossy copy reaches here. Its first byte
+        // still marks it as bytecode, which text mode refuses before reading the header.
+        let script = String::from_utf8_lossy(&bytecode);
+        let err = convert(&script, &sig()).unwrap_err().to_string();
+        assert!(err.contains("binary chunk"), "{err}");
+    }
 }

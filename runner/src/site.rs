@@ -125,8 +125,6 @@ pub fn build(
         .collect();
 
     let data = json!({ "categories": categories, "tested": day(tested_at), "qs": qs });
-    // Safe inside <script>: no "</" can close the tag early.
-    let data = serde_json::to_string(&data)?.replace("</", "<\\/");
     let repo = source_base
         .trim_end_matches('/')
         .split("/tree/")
@@ -134,10 +132,7 @@ pub fn build(
         .unwrap_or(source_base);
 
     std::fs::create_dir_all(out)?;
-    std::fs::write(
-        out.join("index.html"),
-        PAGE.replace("__DATA__", &data).replace("__REPO__", repo),
-    )?;
+    std::fs::write(out.join("index.html"), page(&data, repo)?)?;
     eprintln!("wrote {}", out.join("index.html").display());
     Ok(())
 }
@@ -160,8 +155,32 @@ pub fn day(unix: u64) -> String {
 
 const PAGE: &str = include_str!("site.html");
 
+/// The page, with `data` in its JSON script and `repo` in its links. The data holds what
+/// entrants wrote, so every `<` in it is escaped: then nothing in it can end the script
+/// early (`</script>`) or make the browser read on past its end (`<!--<script>`). The
+/// repository goes in first, so a `__REPO__` in the data stays as it is.
+fn page(data: &Value, repo: &str) -> Result<String> {
+    let data = serde_json::to_string(data)?.replace('<', "\\u003c");
+    Ok(PAGE.replace("__REPO__", repo).replace("__DATA__", &data))
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn page_keeps_data_inside_its_script() {
+        let data = serde_json::json!({ "author": "</script><!--<script> __REPO__" });
+        let page = super::page(&data, "https://example.org/repo").unwrap();
+        let start = page
+            .find(r#"<script id="data" type="application/json">"#)
+            .unwrap();
+        let body = &page[start..];
+        let body = &body[body.find('>').unwrap() + 1..body.find("</script>").unwrap()];
+        assert!(!body.contains('<'), "{body}");
+        assert!(body.contains("__REPO__"));
+        let back: serde_json::Value = serde_json::from_str(body).unwrap();
+        assert_eq!(back, data);
+    }
+
     #[test]
     fn day_formats_unix_time_in_utc() {
         assert_eq!(super::day(0), "1970-01-01");

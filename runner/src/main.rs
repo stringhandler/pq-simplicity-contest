@@ -80,7 +80,7 @@ enum Command {
         /// Where entry sources are browsable; an entry's path is appended.
         #[arg(
             long,
-            default_value = "https://github.com/stringhandler/pq-contest-site/tree/main"
+            default_value = "https://github.com/stringhandler/pq-simplicity-contest/tree/main"
         )]
         source_base: String,
         /// The contest repository's root, for reading each entry's current `entry.json`.

@@ -43,7 +43,12 @@ For each entry, the runner:
 - a signature with any single byte changed, tested at several positions in each field.
 
 If any valid signature fails, or any of these is accepted, the entry doesn't rank.
-Otherwise it ranks: a merged pull request is all an entry needs.
+
+**Passing the tests isn't proof of soundness.** They can't tell a verifier that checks the
+whole signature from one that checks less, for example comparing only part of the
+recomputed root to `PK.root`. Every `verifier.simf` is read before its pull request is
+merged, and one that checks less than the full signature isn't merged. Once merged, an
+entry that passes ranks.
 
 ## Score
 

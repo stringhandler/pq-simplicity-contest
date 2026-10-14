@@ -3161,6 +3161,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "tx-manifest-lib"
 version = "0.3.0"
+source = "git+https://github.com/stringhandler/txmanifest-wallet?rev=702a975e932cb0a937628e35792aff620bdaa09e#702a975e932cb0a937628e35792aff620bdaa09e"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

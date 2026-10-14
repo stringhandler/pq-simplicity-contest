@@ -16,7 +16,7 @@ optimized rewrites reach about 850 vB. Beat them.
 
 - [Rules and scoring](docs/rules.md)
 - [How to enter](docs/entry-format.md)
-- [The leaderboard](https://stringhandler.github.io/pq-contest-site/) *(published when the
+- [The leaderboard](https://stringhandler.github.io/pq-simplicity-contest/) *(published when the
   first results are)*
 
 ## How it works

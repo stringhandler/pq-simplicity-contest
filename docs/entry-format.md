@@ -74,9 +74,13 @@ without `0x`.
 split.
 
 **The sandbox.** Scripts run in Lua 5.4 with only `string`, `table`, `math` and
-`utf8`. There is no `io`, no `os`, no `require`, and no `load`. Each call has an
-instruction and memory limit. A script that errors, exceeds a limit, or returns a value
-the program rejects counts as a failed test.
+`utf8`. There is no `io`, no `os`, no `require`, and no `load`. The string pattern
+functions (`find`, `match`, `gmatch`, `gsub`) are removed too: use `sub`, `format`, `rep`
+and `..`. Each call has an instruction and memory limit. A script that errors, exceeds a
+limit, or returns a value the program rejects counts as a failed test.
+
+Every file in your entry must be a regular file: an entry with a symbolic link in it is
+refused.
 
 The baseline entry,
 [`entries/shrincs-l-stateful/baseline-upstream-main`](../entries/shrincs-l-stateful/baseline-upstream-main),
@@ -84,11 +88,14 @@ is a complete example.
 
 ## Testing locally
 
-Build the runner image once. It needs a checkout of
-[tx-manifest-wallet](https://github.com/stringhandler/txmanifest-wallet) next to this
-repository:
+Build the runner image once. It builds the signer from
+[tx-manifest-wallet](https://github.com/stringhandler/txmanifest-wallet), checked out next
+to this repository at the commit the contest pins (the `tx-manifest-lib` rev in
+[`runner/Cargo.toml`](../runner/Cargo.toml)):
 
 ```sh
+git clone https://github.com/stringhandler/txmanifest-wallet ../txmanifest-wallet
+git -C ../txmanifest-wallet checkout 702a975e932cb0a937628e35792aff620bdaa09e
 docker build --build-context txmanifest=../txmanifest-wallet -t pq-contest-runner .
 ```
 
@@ -101,3 +108,6 @@ docker run --rm -v "$PWD:/contest" pq-contest-runner \
 
 The terminal lists any failures. Full results, including every case's witness weight,
 are in `results/<category>/<entry-name>.json`.
+
+You don't have to: opening the pull request runs the same test, and its check goes red if
+your entry doesn't pass. The run's summary lists the failures, or your score.
