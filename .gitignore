@@ -1,0 +1,12 @@
+target/
+results/
+public/
+*.state.json
+*.state.*.json
+wallet.json
+
+# The operator's signet wallet (init.sh). Holds a mnemonic: never commit it.
+operator/
+
+# local development files
+meta/

@@ -1,0 +1,6 @@
+{
+  "name": "upstream-optimize-fors",
+  "author": "shrincs-simplicity-verifier (optimize_fors)",
+  "description": "Upstream's SimplicityHL rewrite for the Simplicity cost model: witnesses split by use, a streamed leaf hash, lean path steps. Only main is changed, to take the key from param::PK and the message from sig_all_hash.",
+  "source": "https://github.com/BlockstreamResearch/shrincs-simplicity-verifier/blob/5ff141ef427b9fe6421b72c727a520e43f730202/optimized/shrincs_opt.simf"
+}

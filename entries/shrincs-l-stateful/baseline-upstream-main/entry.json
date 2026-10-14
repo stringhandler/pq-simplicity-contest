@@ -1,0 +1,7 @@
+{
+  "name": "baseline-upstream-main",
+  "author": "contest",
+  "description": "Upstream shrincs-simplicity-verifier main (9d3791a), unchanged, plus a wrapper that takes the key from param::PK and the message from jet::sig_all_hash(). The number to beat.",
+  "source": "https://github.com/stringhandler/txmanifest-wallet/tree/main/examples/pq_shrincs",
+  "signet_tx": "3b71426a3c204deaa7e35c4a5a04d0f7480d30bae0d119eec7ff37e289db3bbf"
+}

@@ -1,0 +1,11 @@
+{
+  "shrincs-l-stateful/upstream-optimize-fors": {
+    "sha256": "ff96e615dd80a867c2c590273fbc8d1ebcc5c0c8596f8498e46a33a0d01e8163",
+    "seed": "75f74a4cc12c449f75c35aabae8ae45a03b8e8a78816df003c7272212ea1ada3f456a9693619c8cfc3882a9bd1e05c47",
+    "pk": "0xf456a9693619c8cfc3882a9bd1e05c47420e325b05758ae64b10bc7a65a7c3db",
+    "lock_txid": "95bcf0e96e385e52f16f04497c0241f800ff36913ed58ca9dc2ef8b08c65265d",
+    "spend_txid": "d81f34ebc7440aea18748895b82d946d8cdd9d1ee576b14ff48ab36b6c2b16c4",
+    "spend_witness_wu": 2698,
+    "date": "2026-10-09"
+  }
+}

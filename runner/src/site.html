@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PQ Simplicity Leaderboard</title>
+<meta name="description" content="The smallest Simplicity program that verifies a post-quantum (SHRINCS) signature on the Bitcoin Simplicity signet.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#f7f4ee; --fg:#22201c; --muted:#77716a; --line:#ddd6ca; --card:#fffdf8; --accent:#b4532a; --ideal:#8a8378; --other:#a9a39a; --gold:#c9a227; --silver:#9aa0a6; --bronze:#b07a4a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#171614; --fg:#ece7de; --muted:#9a948a; --line:#2e2b27; --card:#1f1d1a; --accent:#e38a5e; --ideal:#7c766c; --other:#6e6961; } }
+:root[data-theme="dark"] { --bg:#171614; --fg:#ece7de; --muted:#9a948a; --line:#2e2b27; --card:#1f1d1a; --accent:#e38a5e; --ideal:#7c766c; --other:#6e6961; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 "IBM Plex Mono", ui-monospace, monospace; }
+header { border-bottom:1px solid var(--line); }
+.bar { max-width:1080px; margin:0 auto; padding:14px 16px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+main { max-width:1080px; margin:0 auto; padding:24px 16px 64px; }
+a { color:var(--accent); }
+.muted { color:var(--muted); }
+h2 { font-size:16px; margin:28px 0 4px; }
+h3 { font-size:14px; margin:24px 0 8px; }
+.intro { max-width:76ch; margin:0 0 8px; }
+.podium { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; align-items:end; margin:20px 0 24px; }
+.step { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px; min-width:0; }
+.step .place { font-size:12px; color:var(--muted); }
+.step .n { font-size:26px; font-weight:700; }
+.step .who { overflow-wrap:anywhere; }
+/* Fixed heights keep #1 the tallest, whatever each card holds. */
+.step.p1 { border-top:4px solid var(--gold); min-height:170px; }
+.step.p2 { border-top:4px solid var(--silver); min-height:145px; }
+.step.p3 { border-top:4px solid var(--bronze); min-height:125px; }
+.step.empty { visibility:hidden; }
+.step .chain { display:inline-block; margin-top:6px; font-size:12px; }
+.panel { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px; margin:0 0 24px; }
+.scroll { overflow-x:auto; border:1px solid var(--line); border-radius:6px; background:var(--card); }
+table.board { border-collapse:collapse; width:100%; min-width:960px; }
+.board th, .board td { padding:9px 10px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+.board th:nth-child(-n+2), .board td:nth-child(-n+2) { text-align:left; }
+.board td:nth-child(2) { white-space:normal; min-width:190px; max-width:260px; }
+.board th { font-weight:500; color:var(--muted); font-size:12px; }
+.board tr:last-child td { border-bottom:0; }
+.wbar { position:relative; height:10px; width:120px; margin-left:auto; }
+.wbar .ideal { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ideal); }
+.wbar .fill { position:absolute; left:0; top:0; bottom:0; background:var(--accent); opacity:.85; border-radius:2px; }
+.i-wrap { position:relative; display:inline-block; }
+.i { width:16px; height:16px; border-radius:50%; border:1px solid var(--muted); background:none; color:var(--muted); font:700 10px/1 "IBM Plex Mono", monospace; cursor:help; padding:0; margin-left:4px; vertical-align:1px; }
+.i-pop { position:absolute; z-index:5; bottom:calc(100% + 8px); right:-8px; width:260px; padding:10px 12px; background:var(--fg); color:var(--bg); border-radius:6px; font-size:12px; line-height:1.45; text-align:left; white-space:normal; font-weight:400; visibility:hidden; opacity:0; pointer-events:none; transition:opacity .12s; }
+.i-wrap:hover .i-pop, .i-wrap:focus-within .i-pop { visibility:visible; opacity:1; }
+.tag { font-size:11px; border:1px solid var(--line); padding:0 6px; border-radius:4px; color:var(--muted); }
+.fail { margin:6px 0; }
+footer { margin-top:40px; color:var(--muted); font-size:12px; }
+/* progress chart */
+.pc { position:relative; }
+.pc-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.pc-k { font-size:12px; color:var(--muted); }
+.pc-v { font-size:28px; font-weight:700; line-height:1.15; }
+.pc-d { font-size:12px; color:var(--muted); }
+.pc-seg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+.pc-seg button { all:unset; cursor:pointer; padding:5px 11px; font-size:12px; color:var(--muted); }
+.pc-seg button[aria-pressed="true"] { background:var(--fg); color:var(--card); }
+.pc-seg button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.pc-legend { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12px; color:var(--muted); margin:12px 0 4px; }
+.pc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+.pc-step { display:inline-block; width:16px; height:2px; margin-right:5px; vertical-align:3px; background:var(--accent); }
+.pc svg { display:block; width:100%; height:auto; overflow:visible; }
+.pc svg text { fill:var(--muted); font-size:12px; font-family:inherit; }
+.pc svg .pc-lbl { fill:var(--fg); font-weight:700; }
+.pc-tip { position:absolute; left:0; top:0; visibility:hidden; max-width:240px; pointer-events:none; background:var(--fg); color:var(--card); font-size:12px; line-height:1.45; padding:7px 9px; border-radius:6px; opacity:0; transition:opacity .08s; z-index:6; }
+.pc details { font-size:12px; margin-top:4px; } .pc summary { cursor:pointer; color:var(--muted); }
+.pc table { border-collapse:collapse; margin-top:6px; }
+.pc th, .pc td { border-bottom:1px solid var(--line); padding:3px 9px; text-align:right; }
+.pc th:nth-child(-n+2), .pc td:nth-child(-n+2) { text-align:left; }
+@media (max-width:640px) { .podium { grid-template-columns:1fr; } .step.p1, .step.p2, .step.p3 { min-height:0; } .step.empty { display:none; } }
+</style>
+</head>
+<body>
+<header><div class="bar"><span><strong>pq-contest</strong> / smallest post-quantum verifier on Bitcoin</span><a href="__REPO__">rules · enter →</a></div></header>
+<main>
+<p class="intro muted">Write the smallest <a href="https://github.com/BlockstreamResearch/SimplicityHL">Simplicity</a> program that verifies a
+post-quantum signature on the Bitcoin Simplicity signet. The signature scheme is fixed; the verifier is yours. Every entry is tested against
+published and random keys, and must reject signatures it shouldn't accept.</p>
+<div id="categories"></div>
+<footer id="foot"></footer>
+</main>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const GLOSSARY = {
+  score: "The score: the witness stack's weight for a first stateful signature (q = 1), in weight units (WU), taking the largest over the published keys. Everything the input carries counts: witness data, program, CMR, control block and cost padding. Lower is better.",
+  vb: "Virtual bytes: the score divided by 4, rounded up. The unit fees are charged in.",
+  program: "Bytes of Simplicity program on chain: the program item in the witness stack, after pruning to the branch the spend takes.",
+  witness: "Bytes of the entry's witness data, its own encoding of the signature. The line marks the ideal: the scheme's raw signature at q = 1, as shrincs-cpp produces it. An encoding can only go below it by recomputing parts of the signature in the program.",
+  padding: "Zero bytes added to the stack so it buys enough CPU budget for the program's cost. On Bitcoin, compute is paid for in witness weight.",
+  cost: "The program's static cost bound at q = 1, in millions of milli-weight units. The stack must buy at least cost ÷ 1000 WU of budget.",
+  mean: "The mean stack weight over every valid test: each key at every tested leaf index.",
+  max: "The largest stack weight over every valid test. Usually the deepest authentication path.",
+};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = n => n == null ? "—" : Number(n).toLocaleString("en-US");
+const info = key => `<span class="i-wrap"><button class="i" type="button" aria-label="What is this?">i</button><span class="i-pop" role="tooltip">${GLOSSARY[key]}</span></span>`;
+
+function renderCategory(cat) {
+  const sec = document.createElement("section");
+  const E = cat.entries;
+  const placed = [1, 0, 2].map(i => E[i]
+    ? `<div class="step p${i + 1}"><div class="place">#${i + 1}</div><div class="n">${fmt(E[i].score)}</div><div class="muted who">WU · ${esc(E[i].slug)}</div>${E[i].tx ? `<a class="chain" href="${esc(E[i].tx)}" target="_blank" rel="noopener">on signet ↗</a>` : ""}</div>`
+    : `<div class="step p${i + 1} empty"></div>`).join("");
+  const maxW = Math.max(cat.ideal || 0, ...E.map(e => e.witness || 0)) * 1.15 || 1;
+  const cols = [["#"], ["entry"], ["score WU", "score"], ["vB", "vb"], ["program", "program"], ["witness vs ideal", "witness"], ["padding", "padding"], ["cost", "cost"], ["mean", "mean"], ["max", "max"]];
+  sec.innerHTML = `
+    <h2>${esc(cat.category)}</h2>
+    <div class="muted">${esc(cat.scheme)}</div>
+    ${E.length ? `<div class="podium">${placed}</div>` : `<p class="muted">No passing entries yet.</p>`}
+    ${E.length ? `<h3>on-chain program size over time</h3><div class="panel pc"></div>` : ""}
+    ${E.length ? `<div class="scroll"><table class="board">
+      <thead><tr>${cols.map(([t, k]) => `<th>${t}${k ? info(k) : ""}</th>`).join("")}</tr></thead>
+      <tbody>${E.map((e, i) => `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${esc(e.slug)}</strong><br><span class="muted">${esc(e.author)} · <span title="entry id">${esc(e.id)}</span> · </span><a href="${esc(e.source)}" target="_blank" rel="noopener" title="verifier.simf">source ↗</a>${e.tx ? ` · <a href="${esc(e.tx)}" target="_blank" rel="noopener" title="A signet transaction spending a coin locked to this entry">on signet ↗</a>` : ""}</td>
+        <td><strong>${fmt(e.score)}</strong></td><td>${fmt(Math.ceil(e.score / 4))}</td><td>${fmt(e.program)} B</td>
+        <td>${fmt(e.witness)} B<div class="wbar" title="${fmt(e.witness)} B of witness; ideal ${fmt(cat.ideal)} B"><span class="fill" style="width:${100 * (e.witness || 0) / maxW}%"></span>${cat.ideal ? `<span class="ideal" style="left:${100 * cat.ideal / maxW}%"></span>` : ""}</div></td>
+        <td>${fmt(e.padding)} B</td><td>${e.cost == null ? "—" : (e.cost / 1e6).toFixed(2) + " M"}</td><td>${fmt(e.mean)}</td><td>${fmt(e.max)}</td>
+      </tr>`).join("")}</tbody></table></div>
+      <p class="muted" style="font-size:12px;margin-top:8px">Witness vs ideal: the bar is the entry's witness data; the line is the scheme's own signature size (${fmt(cat.ideal)} B).</p>` : ""}
+    ${cat.failing.length ? `<h3>not passing</h3>${cat.failing.map(f => `<p class="fail"><a href="${esc(f.source)}" target="_blank" rel="noopener">${esc(f.slug)}</a> <span class="muted">(${esc(f.author)})</span>: ${f.problems} problem${f.problems === 1 ? "" : "s"}, e.g. <code>${esc(f.examples[0])}</code></p>`).join("")}` : ""}`;
+  document.getElementById("categories").append(sec);
+  if (E.length) progressChart(sec.querySelector(".pc"), E);
+}
+
+// Every passing entry over time, and a record line that steps down with each new leader.
+function progressChart(root, entries) {
+  const subs = [...entries].sort((a, b) => a.date.localeCompare(b.date) || a.slug.localeCompare(b.slug));
+  root.innerHTML = `
+    <div class="pc-top"><div class="pc-head"></div>
+      <div class="pc-seg" role="group" aria-label="Measure"><button type="button" data-m="program" aria-pressed="true">Program bytes</button><button type="button" data-m="score" aria-pressed="false">Whole witness</button></div></div>
+    <div class="pc-legend"><span><span class="pc-step"></span>Record</span><span><span class="pc-dot" style="background:var(--accent)"></span>New record</span><span><span class="pc-dot" style="background:var(--other)"></span>Other submission</span></div>
+    <svg role="img" aria-label="Size of each submission over time, with the record as a descending step line"></svg>
+    <details><summary>Table view</summary><div class="scroll" style="border:0"></div></details>
+    <div class="pc-tip"></div>`;
+  const svg = root.querySelector("svg"), tipEl = root.querySelector(".pc-tip");
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, a = {}, text) => { const n = document.createElementNS(NS, tag); for (const k in a) n.setAttribute(k, a[k]); if (text != null) n.textContent = text; return n; };
+  const day = s => new Date(s + "T00:00:00Z");
+  const short = d => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  const tip = {
+    show(html, x, y) { tipEl.innerHTML = html; tipEl.style.visibility = "visible"; tipEl.style.opacity = 1;
+      const r = root.getBoundingClientRect(), w = tipEl.offsetWidth;
+      tipEl.style.left = Math.min(Math.max(4, x - r.left + 12), r.width - w - 4) + "px"; tipEl.style.top = (y - r.top - 56) + "px"; },
+    hide() { tipEl.style.opacity = 0; tipEl.style.visibility = "hidden"; },
+  };
+  let measure = "program";
+  function draw() {
+    const unit = measure === "program" ? "B" : "WU";
+    let best = Infinity;
+    const pts = subs.filter(s => s[measure] != null).map(s => { const v = s[measure], record = v < best; if (record) best = v; return { ...s, v, record, best }; });
+    if (!pts.length) return;
+    const first = pts[0], last = pts[pts.length - 1], recs = pts.filter(p => p.record), leader = recs[recs.length - 1];
+    const drop = first.v ? Math.round(100 - 100 * leader.v / first.v) : 0;
+    root.querySelector(".pc-head").innerHTML = `<div class="pc-k">${measure === "program" ? "smallest on-chain program" : "best whole witness"}</div><div class="pc-v">${fmt(leader.v)} ${unit}</div><div class="pc-d">${esc(leader.slug)}${drop > 0 ? ` · down ${drop}% from the first entry` : ""}</div>`;
+    const W = Math.max(320, Math.round(root.clientWidth - 28)), H = 300, left = 52, right = 16, top = 12, bottom = 30;
+    svg.replaceChildren(); svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const t0 = day(first.date), t1 = new Date(day(last.date).getTime() + 2 * 864e5);
+    const maxY = Math.max(...pts.map(p => p.v)) * 1.12;
+    const stepY = [100, 250, 500, 1000, 2500, 5000, 10000, 25000].find(s => maxY / s <= 7) || 50000;
+    const sx = d => left + (W - left - right) * (day(d) - t0) / (t1 - t0), sy = v => top + (H - top - bottom) * (1 - v / maxY);
+    for (let v = 0; v <= maxY; v += stepY) {
+      svg.append(el("line", { x1: left, x2: W - right, y1: sy(v), y2: sy(v), stroke: "var(--line)", "stroke-width": 1 }));
+      svg.append(el("text", { x: left - 8, y: sy(v) + 4, "text-anchor": "end" }, v >= 1000 ? (v / 1000) + "k" : v));
+    }
+    let lastX = -Infinity;
+    pts.forEach(p => { const x = sx(p.date); if (x - lastX < 48) return; lastX = x; svg.append(el("text", { x, y: H - 8, "text-anchor": "middle" }, short(day(p.date)))); });
+    let d = `M${sx(first.date)},${sy(first.best)}`;
+    pts.slice(1).forEach(p => { d += ` H${sx(p.date)}`; if (p.record) d += ` V${sy(p.best)}`; });
+    svg.append(el("path", { d: d + ` H${W - right}`, fill: "none", stroke: "var(--accent)", "stroke-width": 2, "stroke-linejoin": "round" }));
+    const room = p => { const k = recs.indexOf(p); return k < recs.length - 1 ? sx(recs[k + 1].date) - sx(p.date) : W - right - sx(p.date); };
+    [...pts].sort((a, b) => a.record - b.record).forEach(p => {
+      const x = sx(p.date), y = sy(p.v);
+      svg.append(el("circle", { cx: x, cy: y, r: p.record ? 6 : 5, fill: p.record ? "var(--accent)" : "var(--other)", stroke: "var(--card)", "stroke-width": 2 }));
+      // Below the line: every other submission is worse than the record, so it sits above it.
+      if (p.record && room(p) > 52) svg.append(el("text", { class: "pc-lbl", x: x + 9, y: y + 20 }, room(p) > 190 ? `${fmt(p.v)} · ${p.slug}` : fmt(p.v)));
+      const hit = el("circle", { cx: x, cy: y, r: 14, fill: "transparent" });
+      const html = `<b>${esc(p.slug)}</b><br>${short(day(p.date))}${p.dated ? "" : " (not yet merged)"} · ${fmt(p.v)} ${unit}<br>${p.record ? "New record" : `Record then: ${fmt(p.best)} ${unit}`}`;
+      hit.addEventListener("mousemove", ev => tip.show(html, ev.clientX, ev.clientY)); hit.addEventListener("mouseleave", tip.hide);
+      svg.append(hit);
+    });
+    root.querySelector("details div").innerHTML = `<table><thead><tr><th>date</th><th>entry</th><th>${unit === "B" ? "program B" : "witness WU"}</th><th>record after</th></tr></thead><tbody>${pts.map(p => `<tr><td>${p.date}</td><td>${esc(p.slug)}</td><td>${fmt(p.v)}${p.record ? " ★" : ""}</td><td>${fmt(p.best)}</td></tr>`).join("")}</tbody></table>`;
+  }
+  root.querySelectorAll(".pc-seg button").forEach(b => b.addEventListener("click", () => {
+    root.querySelectorAll(".pc-seg button").forEach(x => x.setAttribute("aria-pressed", x === b)); measure = b.dataset.m; draw();
+  }));
+  draw();
+  window.addEventListener("resize", draw);
+}
+
+if (!DATA.categories.length) document.getElementById("categories").innerHTML = `<p class="muted">No results yet.</p>`;
+DATA.categories.forEach(renderCategory);
+document.getElementById("foot").textContent = `tested ${DATA.tested} · published + random keys · leaf indexes {${(DATA.qs || []).join(", ")}} · invalid signatures must be rejected`;
+</script>
+</body>
+</html>
