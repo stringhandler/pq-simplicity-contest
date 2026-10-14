@@ -7,8 +7,8 @@ use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-/// The categories the runner can test, with their tag bytes.
-pub const CATEGORIES: &[(&str, u8)] = &[("shrincs-l-stateful", 0x01)];
+/// The categories the runner can test.
+pub const CATEGORIES: &[&str] = &["shrincs-l-stateful"];
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Meta {
@@ -17,8 +17,8 @@ pub struct Meta {
     pub description: String,
     #[serde(default)]
     pub source: Option<String>,
-    /// A signet transaction that spent a coin locked to this entry, as a txid. Optional and
-    /// self-reported, until the indexer checks it.
+    /// A signet transaction that spent a coin locked to this entry, as a txid. Optional,
+    /// self-reported and unchecked.
     #[serde(default)]
     pub signet_tx: Option<String>,
 }
@@ -39,8 +39,7 @@ pub struct Entry {
 }
 
 impl Entry {
-    /// The entry id: the first 8 bytes of the verifier's SHA-256, as the on-chain tag
-    /// carries it.
+    /// The entry id: the first 8 bytes of the verifier's SHA-256, in hex.
     pub fn id(&self) -> &str {
         &self.sha256[..16]
     }
@@ -102,7 +101,7 @@ pub fn discover(root: &Path) -> Result<Vec<Entry>> {
     let mut out = Vec::new();
     for category in sorted_dirs(&root.join("entries"))? {
         let name = file_name(&category)?;
-        if !CATEGORIES.iter().any(|(c, _)| *c == name) {
+        if !CATEGORIES.contains(&name.as_str()) {
             eprintln!("skipping entries/{name}: not a category this runner tests");
             continue;
         }

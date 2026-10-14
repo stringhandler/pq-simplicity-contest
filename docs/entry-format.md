@@ -1,15 +1,14 @@
 # How to enter
 
-Entries live in one folder per category, for example `entries/shrincs-l-stateful/`. Each
-category folder holds its rules for the qualifying transaction, and a template manifest
-for it. Open a pull request that adds one directory, `entries/<category>/<entry-name>/`:
+Entries live in one folder per category, for example `entries/shrincs-l-stateful/`. Open
+a pull request that adds one directory, `entries/<category>/<entry-name>/`, with three
+files:
 
 ```
 entries/<category>/<entry-name>/
   entry.json        metadata
   verifier.simf     your program: one self-contained SimplicityHL file
   convert.lua       maps a shrincs-cpp signature onto your witnesses
-  txmanifest.json   optional: your copy of the category's qualifying-transaction manifest
 ```
 
 Use lowercase letters, digits and `-` in the directory name. To submit a new version,
@@ -27,17 +26,18 @@ add a new directory, so earlier results stay reproducible.
 }
 ```
 
-`signet_tx` adds an "on signet" link to the leaderboard, pointing at the transaction on the
-[Simplicity signet explorer](https://signet.simplicity-lang.org/explorer). It's optional, and
-for now it's taken on trust: the leaderboard doesn't yet check that the transaction really
-spends your program. You can add it after your entry is merged, without it being tested
-again.
+You don't need `signet_tx`: once your entry is merged, the contest spends it on the
+signet and links that transaction (see [the rules](rules.md#on-signet)). Set it only if
+you've spent your entry yourself and want the leaderboard to link your transaction
+instead. It's taken on trust: the leaderboard doesn't check that the transaction really
+spends your program. You can add it later, in a pull request that changes only
+`entry.json`; your entry id stays the same.
 
 ## `verifier.simf`
 
 One file, already flattened. If you write it in pieces (upstream uses `mcpp`), commit the
-preprocessed output. The file's SHA-256 is your **entry id**: the first 8 bytes, in hex,
-go in your on-chain tag. See [the rules](rules.md) for what the program must do.
+preprocessed output. The first 8 bytes of the file's SHA-256, in hex, are your **entry
+id**, shown on the leaderboard. See [the rules](rules.md) for what the program must do.
 
 ## `convert.lua`
 
@@ -88,15 +88,11 @@ is a complete example.
 
 ## Testing locally
 
-Build the runner image once. It builds the signer from
-[tx-manifest-wallet](https://github.com/stringhandler/txmanifest-wallet), checked out next
-to this repository at the commit the contest pins (the `tx-manifest-lib` rev in
-[`runner/Cargo.toml`](../runner/Cargo.toml)):
+From a clone of this repository, build the runner image once. It fetches everything it
+needs, at the versions the contest pins:
 
 ```sh
-git clone https://github.com/stringhandler/txmanifest-wallet ../txmanifest-wallet
-git -C ../txmanifest-wallet checkout 702a975e932cb0a937628e35792aff620bdaa09e
-docker build --build-context txmanifest=../txmanifest-wallet -t pq-contest-runner .
+docker build -t pq-contest-runner .
 ```
 
 Then test your entry. It takes a few minutes:

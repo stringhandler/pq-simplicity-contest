@@ -2,11 +2,10 @@
 #
 # The contest runner and the SHRINCS signer, in one image.
 #
-# The runner fetches tx-manifest-lib at the rev pinned in runner/Cargo.toml. The signer is
-# built from tx-manifest-wallet, which comes in as a named build context: check out the same
-# commit there.
+# Both come from tx-manifest-wallet at the rev runner/Cargo.toml pins for tx-manifest-lib,
+# fetched from GitHub, so the image matches what CI scores with:
 #
-#   docker build --build-context txmanifest=../txmanifest-wallet -t pq-contest-runner .
+#   docker build -t pq-contest-runner .
 #
 # Run it with the contest repository mounted at /contest:
 #
@@ -18,12 +17,15 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends g++ make git libssl-dev pkg-config \
  && rm -rf /var/lib/apt/lists/*
 
-# Only the signer's sources: none of a local signer build.
-COPY --from=txmanifest contrib/shrincs-signer/Makefile contrib/shrincs-signer/shrincs-signer.cpp \
-     /txmanifest-wallet/contrib/shrincs-signer/
-
-# The signer fetches shrincs-cpp at its pinned commit.
-RUN make -C /txmanifest-wallet/contrib/shrincs-signer
+# The signer, from tx-manifest-wallet at the runner's pinned rev. It fetches shrincs-cpp
+# at its own pinned commit.
+COPY runner/Cargo.toml /contest/runner/Cargo.toml
+RUN rev=$(sed -n 's/^tx-manifest-lib = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' /contest/runner/Cargo.toml) \
+ && test -n "$rev" \
+ && git init -q /txmanifest-wallet \
+ && git -C /txmanifest-wallet fetch -q --depth 1 https://github.com/stringhandler/txmanifest-wallet "$rev" \
+ && git -C /txmanifest-wallet checkout -q FETCH_HEAD \
+ && make -C /txmanifest-wallet/contrib/shrincs-signer
 
 COPY runner /contest/runner
 RUN cargo build --release --locked --manifest-path /contest/runner/Cargo.toml

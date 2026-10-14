@@ -37,7 +37,12 @@ jobs:
       - name: Test the entries
         run: runner/target/release/runner test --out results
       - name: Build the leaderboard
-        run: runner/target/release/runner site --results results --out public
+        run: |
+          runner/target/release/runner site --results results --out public
+          # Each entry's full results go beside the page, as docs/rules.md says. Not
+          # results/.keys: each result already holds its run's random seeds.
+          mkdir -p public/results
+          for dir in results/*/; do cp -R "${dir%/}" public/results/; done
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

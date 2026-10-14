@@ -1,9 +1,0 @@
-{
-  "PK": "0x<from shrincs-signer pubkey>",
-  "ENTRY_ID": "<16 hex digits>",
-  "watch_address": "<published in the rules>",
-  "dest": "<an address of yours>",
-  "fee_rate": "1",
-  "SIG": "unsigned",
-  "OTHER_ROOT": "unsigned"
-}

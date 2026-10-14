@@ -53,7 +53,7 @@ pub fn build(
 ) -> Result<()> {
     let ledger = load_ledger(root)?;
     let mut by_category: BTreeMap<String, Vec<EntryResult>> = BTreeMap::new();
-    for (category, _) in CATEGORIES {
+    for category in CATEGORIES {
         let Ok(files) = std::fs::read_dir(results.join(category)) else {
             continue;
         };
@@ -71,7 +71,7 @@ pub fn build(
     let categories: Vec<Value> = by_category
         .into_iter()
         .map(|(category, mut entries)| {
-            entries.sort_by(|a, b| a.score_wu.cmp(&b.score_wu).then(a.slug.cmp(&b.slug)));
+            entries.sort_by(rank);
             for e in &entries {
                 tested_at = tested_at.max(e.run.tested_at);
                 qs.clone_from(&e.run.qs);
@@ -137,6 +137,13 @@ pub fn build(
     Ok(())
 }
 
+/// Leaderboard order: lower score first. Ties go to the entry merged first, then by name;
+/// an entry not yet merged has no date and comes after merged ones.
+fn rank(a: &EntryResult, b: &EntryResult) -> std::cmp::Ordering {
+    let key = |e: &EntryResult| (e.score_wu, e.submitted_at.is_none(), e.submitted_at.clone());
+    key(a).cmp(&key(b)).then_with(|| a.slug.cmp(&b.slug))
+}
+
 /// `YYYY-MM-DD` for a Unix time, in UTC.
 pub fn day(unix: u64) -> String {
     let days = (unix / 86_400) as i64;
@@ -166,6 +173,34 @@ fn page(data: &Value, repo: &str) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::results::EntryResult;
+
+    fn entry(slug: &str, score: usize, merged: Option<&str>) -> EntryResult {
+        serde_json::from_value(serde_json::json!({
+            "category": "c", "slug": slug, "path": "p", "id": "i", "sha256": "s",
+            "name": slug, "author": "a", "description": "d", "source": null,
+            "submitted_at": merged, "passed": true, "failures": [], "score_wu": score,
+            "mean_wu": null, "max_wu": null, "program_bytes": null, "witness_bytes": null,
+            "padding_bytes": null, "max_cost_mwu": null, "cases": [],
+            "run": { "tested_at": 0, "qs": [], "known_keys": [], "random_seeds": [],
+                     "compiler": "", "signer": "" },
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn ties_go_to_the_entry_merged_first() {
+        let mut entries = [
+            entry("a-unmerged", 100, None),
+            entry("b-later", 100, Some("2026-10-12")),
+            entry("c-earlier", 100, Some("2026-10-10")),
+            entry("d-best", 90, Some("2026-10-13")),
+        ];
+        entries.sort_by(super::rank);
+        let order: Vec<&str> = entries.iter().map(|e| e.slug.as_str()).collect();
+        assert_eq!(order, ["d-best", "c-earlier", "b-later", "a-unmerged"]);
+    }
+
     #[test]
     fn page_keeps_data_inside_its_script() {
         let data = serde_json::json!({ "author": "</script><!--<script> __REPO__" });

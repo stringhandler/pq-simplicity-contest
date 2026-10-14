@@ -1,0 +1,44 @@
+# Builds the runner image and tests an entry with it, with the commands
+# docs/entry-format.md gives entrants, so those instructions keep working.
+#
+# On pull requests this runs the pull request's own code, so it has read access only.
+name: Docker image
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - runner/**
+      - docs/entry-format.md
+      - .github/workflows/docker.yml
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - runner/**
+      - docs/entry-format.md
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the image
+        run: docker build -t pq-contest-runner .
+      - name: Test an entry with it
+        run: |
+          docker run --rm -v "$PWD:/contest" pq-contest-runner \
+            test --entry entries/shrincs-l-stateful/upstream-optimize-fors --out results
+          jq -e .passed results/shrincs-l-stateful/upstream-optimize-fors.json

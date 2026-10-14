@@ -8,7 +8,7 @@ pub struct EntryResult {
     pub slug: String,
     /// `entries/<category>/<slug>`.
     pub path: String,
-    /// The first 8 bytes of SHA-256 of `verifier.simf`, hex: the on-chain tag's entry id.
+    /// The entry id: the first 8 bytes of SHA-256 of `verifier.simf`, hex.
     pub id: String,
     pub sha256: String,
     pub name: String,

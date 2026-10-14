@@ -21,6 +21,12 @@ if [ ! -d "$WALLET_REPO/txmanifest_lib" ]; then
   echo "No tx-manifest-wallet at $WALLET_REPO; clone it there, or set TXMANIFEST_WALLET." >&2
   exit 1
 fi
+# The signer should be the one CI scores with: from the commit runner/Cargo.toml pins.
+REV=$(sed -n 's/^tx-manifest-lib = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' runner/Cargo.toml)
+if ! git -C "$WALLET_REPO" diff --quiet "$REV" -- contrib/shrincs-signer 2>/dev/null; then
+  echo "warning: the signer in $WALLET_REPO differs from $REV, the commit runner/Cargo.toml" >&2
+  echo "pins, so scores may not match CI's. To match: git -C $WALLET_REPO checkout $REV" >&2
+fi
 
 echo "== building"
 make -s -C "$WALLET_REPO/contrib/shrincs-signer"
